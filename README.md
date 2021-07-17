@@ -1,11 +1,11 @@
 tvhProxy
 ========
 
-A small flask app to proxy requests between Plex Media Server and Tvheadend. This repo adds a few critical improvements and fixes to the archived upstream version at [jkaberg/tvhProxy](https://github.com/jkaberg/tvhProxy):
+A small flask app to proxy requests between Plex Media Server and Tvheadend. This repo adds a few critical improvements and fixes to the archived upstream version at [huncrys/tvhProxy](https://github.com/huncrys/tvhProxy):
 
-- [SSDP](https://en.wikipedia.org/wiki/Simple_Service_Discovery_Protocol) Discovery. Fixes the issue of Plex randomly dropping the device.
-- [XMLTV EPG](https://support.plex.tv/articles/using-an-xmltv-guide/)  EPG export, including adding dummy programme entries for channels without EPG so you can still use these channels in Plex (see below for Plex configuration URL)
 - Configuration of variables via [dotenv](https://pypi.org/project/python-dotenv/) file
+- Added DeviceId to env file 
+- Updated Dockerfile to python version 3.9
 
 #### tvhProxy configuration
 1. Check tvhProxy.py for configuration options and set them up them as ```KEY=VALUE``` pairs in a ```.env``` file.
