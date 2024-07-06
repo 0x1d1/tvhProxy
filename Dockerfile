@@ -1,4 +1,4 @@
-FROM python:3.12.3-alpine as builder
+FROM python:3.12.4-alpine as builder
 
 WORKDIR /app
 COPY requirements.txt ./
@@ -7,7 +7,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN python -m venv /opt/venv \
  && pip install --no-cache-dir -r requirements.txt
 
-FROM python:3.12.0-alpine
+FROM python:3.12.4-alpine
 
 COPY --from=builder /opt/venv /opt/venv
 
