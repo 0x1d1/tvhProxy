@@ -3,7 +3,7 @@ stages:
   - manifest
 
 variables:
-  CI_IMAGE_NAME: huncrys/tvhproxy
+  CI_DOCKERHUB_IMAGE: huncrys/tvhproxy
 
 build:
   stage: build
@@ -13,15 +13,50 @@ build:
   parallel:
     matrix:
       - CI_ARCH: [amd64, arm64]
-  script:
+  before_script:
     - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"${CI_DOCKERHUB_AUTH}\"}}}" > /kaniko/.docker/config.json
+    - |
+      cat > /kaniko/.docker/config.json <<END
+      {
+        "auths": {
+          "https://index.docker.io/v1/": {
+            "auth": "${CI_DOCKERHUB_AUTH}"
+          },
+          "${CI_REGISTRY}": {
+            "auth": "$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')"
+          },
+          "$(echo -n $CI_DEPENDENCY_PROXY_SERVER | awk -F[:] '{print $1}')": {
+            "auth": "$(printf "%s:%s" ${CI_DEPENDENCY_PROXY_USER} "${CI_DEPENDENCY_PROXY_PASSWORD}" | base64 | tr -d '\n')"
+          }
+        }
+      }
+      END
+  script:
+    - BUILD_DATE="$(date '+%FT%T%z' | sed -E -n 's/(\+[0-9]{2})([0-9]{2})$/\1:\2/p')" #rfc 3339 date
+    - BUILD_TITLE="$(echo "${CI_PROJECT_TITLE}" | tr " " "_")"
     - >-
       /kaniko/executor
+      --label build-date="${BUILD_DATE}"
+      --label org.opencontainers.image.authors="${CI_SERVER_URL}/${GITLAB_USER_LOGIN}"
+      --label org.opencontainers.image.created="${BUILD_DATE}"
+      --label org.opencontainers.image.description="${BUILD_TITLE}"
+      --label org.opencontainers.image.documentation="${CI_PROJECT_URL}"
+      --label org.opencontainers.image.licenses="${CI_PROJECT_URL}"
+      --label org.opencontainers.image.ref.name="${CI_COMMIT_SHA}"
+      --label org.opencontainers.image.revision="${CI_COMMIT_SHA}"
+      --label org.opencontainers.image.source="${CI_PROJECT_URL}"
+      --label org.opencontainers.image.title="${BUILD_TITLE}"
+      --label org.opencontainers.image.url="${CI_PROJECT_URL}"
+      --label org.opencontainers.image.vendor="${CI_SERVER_URL}/${GITLAB_USER_LOGIN}"
+      --label org.opencontainers.image.version="${CI_COMMIT_SHA}"
+      --label vcs-url="${CI_PROJECT_URL}"
+      --registry-mirror "${CI_REGISTRY_MIRROR}"
       --context "${CI_PROJECT_DIR}"
       --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
-      --destination "${CI_IMAGE_NAME}:${CI_ARCH}-${CI_COMMIT_SHORT_SHA}"
-      --destination "${CI_IMAGE_NAME}:${CI_ARCH}"
+      --destination "${CI_DOCKERHUB_IMAGE}:${CI_ARCH}-${CI_COMMIT_SHORT_SHA}"
+      --destination "${CI_REGISTRY_IMAGE}:${CI_ARCH}-${CI_COMMIT_SHORT_SHA}"
+      --destination "${CI_DOCKERHUB_IMAGE}:${CI_ARCH}"
+      --destination "${CI_REGISTRY_IMAGE}:${CI_ARCH}"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   tags:
@@ -32,18 +67,44 @@ manifest:
     name: mplatform/manifest-tool:alpine
     entrypoint: [""]
   stage: manifest
-  script:
+  before_script:
     - mkdir -p /root/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"${CI_DOCKERHUB_AUTH}\"}}}" > /root/.docker/config.json
+    - |
+      cat > /root/.docker/config.json <<END
+      {
+        "auths": {
+          "https://index.docker.io/v1/": {
+            "auth": "${CI_DOCKERHUB_AUTH}"
+          },
+          "${CI_REGISTRY}": {
+            "auth": "$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')"
+          },
+          "$(echo -n $CI_DEPENDENCY_PROXY_SERVER | awk -F[:] '{print $1}')": {
+            "auth": "$(printf "%s:%s" ${CI_DEPENDENCY_PROXY_USER} "${CI_DEPENDENCY_PROXY_PASSWORD}" | base64 | tr -d '\n')"
+          }
+        }
+      }
+      END
+  script:
     - >-
       manifest-tool push from-args
       --platforms linux/amd64,linux/arm64
-      --template "${CI_IMAGE_NAME}:ARCH-${CI_COMMIT_SHORT_SHA}"
-      --target "${CI_IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
+      --template "${CI_DOCKERHUB_IMAGE}:ARCH-${CI_COMMIT_SHORT_SHA}"
+      --target "${CI_DOCKERHUB_IMAGE}:${CI_COMMIT_SHORT_SHA}"
     - >-
       manifest-tool push from-args
       --platforms linux/amd64,linux/arm64
-      --template "${CI_IMAGE_NAME}:ARCH"
-      --target "${CI_IMAGE_NAME}:latest"
+      --template "${CI_REGISTRY_IMAGE}:ARCH-${CI_COMMIT_SHORT_SHA}"
+      --target "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+    - >-
+      manifest-tool push from-args
+      --platforms linux/amd64,linux/arm64
+      --template "${CI_DOCKERHUB_IMAGE}:ARCH"
+      --target "${CI_DOCKERHUB_IMAGE}:latest"
+    - >-
+      manifest-tool push from-args
+      --platforms linux/amd64,linux/arm64
+      --template "${CI_REGISTRY_IMAGE}:ARCH"
+      --target "${CI_REGISTRY_IMAGE}:latest"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
