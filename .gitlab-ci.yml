@@ -3,4 +3,6 @@ variables:
 
 include:
   - component: $CI_SERVER_FQDN/oaklab/ci-templates/kaniko-build@~latest
+    inputs:
+      licenses: BSD-3-Clause
   - component: $CI_SERVER_FQDN/oaklab/ci-templates/manifest-tool-manifest@~latest
