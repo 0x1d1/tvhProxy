@@ -2,6 +2,6 @@ variables:
   CI_DOCKERHUB_IMAGE: huncrys/tvhproxy
 
 include:
-  - component: $CI_SERVER_FQDN/oaklab/ci-templates/docker-publish@~latest
+  - component: $CI_SERVER_FQDN/oaklab/ci-templates/oci-publish@8
     inputs:
       licenses: BSD-3-Clause
