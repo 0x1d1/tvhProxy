@@ -3,7 +3,7 @@ monkey.patch_all()
 import json
 from dotenv import load_dotenv
 from ssdp import SSDPServer
-from flask import Flask, Response, request, jsonify, abort, render_template
+from flask import Flask, jsonify, render_template
 from gevent.pywsgi import WSGIServer
 import xml.etree.ElementTree as ElementTree
 from datetime import timedelta, datetime, time
@@ -145,7 +145,7 @@ def _get_genres():
         for entry in entries:
             majorCategories[entry['key']] = entry['val']
         for entry in entries_full:
-            if not entry['key'] in majorCategories:
+            if entry['key'] not in majorCategories:
                 mainCategory = _findMainCategory(majorCategories, entry['key'])
                 if(mainCategory != entry['val']):
                     genres[entry['key']] = [mainCategory, entry['val']]
