@@ -3,7 +3,7 @@ monkey.patch_all()
 import json
 from dotenv import load_dotenv
 from ssdp import SSDPServer
-from flask import Flask, Response, request, jsonify, abort, render_template
+from flask import Flask, jsonify, render_template
 from gevent.pywsgi import WSGIServer
 import xml.etree.ElementTree as ElementTree
 from datetime import timedelta, datetime, time
@@ -117,7 +117,7 @@ def _get_channels():
     try:
         r = requests.get(url, params=params, auth=HTTPDigestAuth(
             config['tvhUser'], config['tvhPassword']))
-        return r.json()['entries']
+        return r.json(strict=False)['entries']
 
     except Exception as e:
         logger.error('An error occured: %s' + repr(e))
@@ -136,16 +136,16 @@ def _get_genres():
     try:
         r = requests.get(url, auth=HTTPDigestAuth(
             config['tvhUser'], config['tvhPassword']))
-        entries = r.json()['entries']
+        entries = r.json(strict=False)['entries']
         r = requests.get(url, params=params, auth=HTTPDigestAuth(
             config['tvhUser'], config['tvhPassword']))
-        entries_full = r.json()['entries']
+        entries_full = r.json(strict=False)['entries']
         majorCategories = {}
         genres = {}
         for entry in entries:
             majorCategories[entry['key']] = entry['val']
         for entry in entries_full:
-            if not entry['key'] in majorCategories:
+            if entry['key'] not in majorCategories:
                 mainCategory = _findMainCategory(majorCategories, entry['key'])
                 if(mainCategory != entry['val']):
                     genres[entry['key']] = [mainCategory, entry['val']]
@@ -182,7 +182,7 @@ def _get_xmltv():
         r = requests.get(url, params=params,  auth=HTTPDigestAuth(
             config['tvhUser'], config['tvhPassword']))
         logger.info('downloading epg grid from %s', r.url)
-        epg_events_grid = r.json()['entries']
+        epg_events_grid = r.json(strict=False)['entries']
         epg_events = {}
         event_keys = {}
         for epg_event in epg_events_grid:
@@ -292,7 +292,8 @@ def _get_xmltv():
         logger.info("returning epg")
         return ElementTree.tostring(root)
     except requests.exceptions.RequestException as e:  # This is the correct syntax
-        logger.error('An error occured: %s' + repr(e))
+        logger.error('An error occured: ' + repr(e))
+        raise e
 
 
 def _start_ssdp():
